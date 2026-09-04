@@ -1,11 +1,13 @@
 function addLatexToMathJax3()
 {
-    if (!MathJax?.startup?.document?.math)
+    // Guard against pages without MathJax: a bare `MathJax?.` throws a
+    // ReferenceError if the global is not declared at all.
+    if (typeof MathJax === 'undefined' || !MathJax?.startup?.document?.math)
         return
 
-    for (math of MathJax.startup.document.math)
+    for (const item of MathJax.startup.document.math)
     {
-        math.typesetRoot.setAttribute("markdownload-latex", math.math)
+        item.typesetRoot.setAttribute("markdownload-latex", item.math)
     }
 }
 addLatexToMathJax3()

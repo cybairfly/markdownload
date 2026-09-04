@@ -71,6 +71,14 @@ in my hat via the following:
 [![Paypal](https://img.shields.io/badge/paypal-deathau-yellow?style=social&logo=paypal)](https://paypal.me/deathau)
 
 # Version History
+## 3.5.0 - Manifest V3 migration
+This release migrates the extension from **Manifest V2** to **Manifest V3**, restoring
+support in Chrome/Chromium (which has disabled MV2 extensions). The DOM-dependent
+conversion work now runs in an offscreen document, and the background is an MV3
+service worker. See [CHANGELOG.md](./CHANGELOG.md) for details.
+
+> Chrome / Edge / other Chromium browsers require **Chrome 109+**.
+
 ## 3.4.0
 - Fixed extra spaces in titles which could cause issues (thanks @rickdoesdev !)
 - Fixed an issue with image paths in some circumstances (thanks @rickdoesdev !)
@@ -87,3 +95,38 @@ in my hat via the following:
 - Updates to the README (thanks @2gn and @eugenesvk !)
 
 > Previous version history is recorded in [CHANGELOG.md](./CHANGELOG.md)
+
+# Development
+
+## Install
+```bash
+cd src
+npm install
+```
+
+## Run a local copy
+```bash
+# Chromium: load the `src/` folder from chrome://extensions (Developer mode > Load unpacked)
+# Firefox:  npm run start:firefoxdeveloper
+```
+
+## Build a distributable Chrome package
+```bash
+npm run build          # produces ./dist and ./markdownload-mv3.zip
+```
+
+## Tests
+```bash
+npm test               # jsdom unit tests for the offscreen conversion pipeline
+npx web-ext lint       # add-on linter
+npm run verify:chrome   # (optional) automated Chrome smoke test via Puppeteer (needs a GUI Chrome)
+```
+
+### Manual verification checklist (Chrome)
+1. Load unpacked extension from `src/`.
+2. Open any article and click the MarkDownload icon: the popup should render Markdown.
+3. Select text → popup should offer "Selected Text"; download that selection.
+4. Right-click a page/reference → verify the MarkDownload context menus work.
+5. Test keyboard shortcuts (`Alt+Shift+M/D/C/L`).
+6. Toggle "Download Images" in the popup/context menu on an image-heavy page.
+7. Verify settings page saves and persists (storage) and the context-menu toggles stay in sync.

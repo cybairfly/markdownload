@@ -1,6 +1,6 @@
 function notifyExtension() {
     // send a message that the content should be clipped
-    browser.runtime.sendMessage({ type: "clip", dom: content});
+    chrome.runtime.sendMessage({ type: "clip", dom: content});
 }
 
 function getHTMLOfDocument() {
@@ -165,6 +165,36 @@ function downloadImage(filename, url) {
 
 (function loadPageContextScript(){
     var s = document.createElement('script');
-    s.src = browser.runtime.getURL('contentScript/pageContext.js');
+    s.src = chrome.runtime.getURL('contentScript/pageContext.js');
     (document.head||document.documentElement).appendChild(s);
 })()
+
+// ---------------------------------------------------------------------------
+// Message handling for the service worker / popup.
+//
+// The content script is injected into every page by the manifest, so it can be
+// reached through tabs.sendMessage for the operations below.
+// ---------------------------------------------------------------------------
+chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
+  if (!message) return;
+
+  // The service worker/popup wants the page's DOM + selection payload.
+  if (message.type === "get-payload") {
+    sendResponse(getSelectionAndDom());
+    return true;
+  }
+
+  // Copy arbitrary text to the clipboard on behalf of the extension.
+  else if (message.type === "copy-to-clipboard") {
+    copyToClipboard(message.text);
+    sendResponse({ ok: true });
+    return true;
+  }
+
+  // Download a markdown file via a data: URI anchor that we click here.
+  else if (message.type === "download-markdown") {
+    downloadMarkdown(message.filename, message.data);
+    sendResponse({ ok: true });
+    return true;
+  }
+});

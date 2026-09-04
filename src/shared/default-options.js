@@ -15,6 +15,10 @@ const defaultOptions = {
   backmatter: "",
   title: "{pageTitle}",
   includeTemplate: false,
+  // Popup-only toggle: clip only the selected text instead of the whole page.
+  // Toggled in the popup ("Selected Text" / "Entire Document"), read here so
+  // getOptions() returns it for the service worker's clip-tab fallback.
+  clipSelection: true,
   saveAs: false,
   downloadImages: false,
   imagePrefix: '{pageTitle}/',
@@ -29,13 +33,17 @@ const defaultOptions = {
 }
 
 // function to get the options from storage and substitute default options if it fails
+// NOTE: offscreen documents cannot use chrome.storage; they always receive a
+// fully-populated options object from the service worker instead.
 async function getOptions() {
   let options = defaultOptions;
   try {
-    options = await browser.storage.sync.get(defaultOptions);
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
+      options = await chrome.storage.sync.get(defaultOptions);
+      if (!chrome.downloads) options.downloadMode = 'contentLink';
+    }
   } catch (err) {
     console.error(err);
   }
-  if (!browser.downloads) options.downloadMode = 'contentLink';
   return options;
 }

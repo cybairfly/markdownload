@@ -1,4 +1,17 @@
 # Changelog
+
+## 3.5.0 (Manifest V3)
+- Migrated the extension from **Manifest V2** to **Manifest V3** to restore Chrome/Chromium support (Chrome has disabled MV2 extensions).
+- Replaced the persistent background page with a `background.service_worker`.
+- Moved all DOM-dependent work (Readability parsing, Turndown conversion, image downloading) into a dedicated **offscreen document** (`offscreen/offscreen.html` + `offscreen/offscreen.js`), since MV3 service workers have no DOM.
+- Moved `<all_urls>` host access into `host_permissions`.
+- Replaced `browser_action` with `action` (`_execute_browser_action` -> `_execute_action`).
+- Replaced `chrome.tabs.executeScript` with the `chrome.scripting` API for content-script injection.
+- Declared `contentScript/pageContext.js` as a `web_accessible_resource`.
+- Added `scripting` and `offscreen` permissions and a shared `shared/filename.js` helper.
+- Bumped minimum Chrome version to 109 (needed for the `offscreen` API).
+- Added unit + smoke test harnesses and build/verify npm scripts.
+
 ## 3.4.0
 - Fixed extra spaces in titles which could cause issues (thanks @rickdoesdev !)
 - Fixed an issue with image paths in some circumstances (thanks @rickdoesdev !)

@@ -48,7 +48,7 @@ const toggleClipSelection = options => {
     options.clipSelection = !options.clipSelection;
     document.querySelector("#selected").classList.toggle("checked");
     document.querySelector("#document").classList.toggle("checked");
-    browser.storage.sync.set(options).then(() => clipSite()).catch((error) => {
+    chrome.storage.sync.set(options).then(() => clipSite()).catch((error) => {
         console.error(error);
     });
 }
@@ -56,14 +56,14 @@ const toggleClipSelection = options => {
 const toggleIncludeTemplate = options => {
     options.includeTemplate = !options.includeTemplate;
     document.querySelector("#includeTemplate").classList.toggle("checked");
-    browser.storage.sync.set(options).then(() => {
-        browser.contextMenus.update("toggle-includeTemplate", {
+    chrome.storage.sync.set(options).then(() => {
+        chrome.contextMenus.update("toggle-includeTemplate", {
             checked: options.includeTemplate
-        });
+        }).catch(() => {});
         try {
-            browser.contextMenus.update("tabtoggle-includeTemplate", {
+            chrome.contextMenus.update("tabtoggle-includeTemplate", {
                 checked: options.includeTemplate
-            });
+            }).catch(() => {});
         } catch { }
         return clipSite()
     }).catch((error) => {
@@ -74,14 +74,14 @@ const toggleIncludeTemplate = options => {
 const toggleDownloadImages = options => {
     options.downloadImages = !options.downloadImages;
     document.querySelector("#downloadImages").classList.toggle("checked");
-    browser.storage.sync.set(options).then(() => {
-        browser.contextMenus.update("toggle-downloadImages", {
+    chrome.storage.sync.set(options).then(() => {
+        chrome.contextMenus.update("toggle-downloadImages", {
             checked: options.downloadImages
-        });
+        }).catch(() => {});
         try {
-            browser.contextMenus.update("tabtoggle-downloadImages", {
+            chrome.contextMenus.update("tabtoggle-downloadImages", {
                 checked: options.downloadImages
-            });
+            }).catch(() => {});
         } catch { }
     }).catch((error) => {
         console.error(error);
@@ -96,41 +96,32 @@ const showOrHideClipOption = selection => {
     }
 }
 
-const clipSite = id => {
-    return browser.tabs.executeScript(id, { code: "getSelectionAndDom()" })
-        .then((result) => {
-            if (result && result[0]) {
-                showOrHideClipOption(result[0].selection);
-                let message = {
-                    type: "clip",
-                    dom: result[0].dom,
-                    selection: result[0].selection
-                }
-                return browser.storage.sync.get(defaultOptions).then(options => {
-                    browser.runtime.sendMessage({
-                        ...message,
-                        ...options
-                    });
-                }).catch(err => {
-                    console.error(err);
-                    showError(err)
-                    return browser.runtime.sendMessage({
-                        ...message,
-                        ...defaultOptions
-                    });
-                }).catch(err => {
-                    console.error(err);
-                    showError(err)
-                });
-            }
-        }).catch(err => {
+const clipSite = tabId => {
+    // Ask the service worker to clip the tab. The SW resolves the tab, injects
+    // the content script if it is missing (e.g. a tab that outlived an
+    // extension install/reload), converts via the offscreen document, and
+    // broadcasts "display.md" back to us - so this can never hit the
+    // "Receiving end does not exist" error the direct tabs.sendMessage call
+    // used to produce.
+    return chrome.runtime.sendMessage({
+        type: "clip-tab",
+        tabId: tabId
+    }).then((result) => {
+        if (result && result.ok) {
+            showOrHideClipOption(result.selection);
+        } else {
+            const err = (result && result.error) || 'Unknown error clipping the page.';
             console.error(err);
-            showError(err)
-        });
+            showError(err);
+        }
+    }).catch(err => {
+        console.error(err);
+        showError(err);
+    });
 }
 
 // inject the necessary scripts
-browser.storage.sync.get(defaultOptions).then(options => {
+chrome.storage.sync.get(defaultOptions).then(options => {
     checkInitialSettings(options);
     
     document.getElementById("selected").addEventListener("click", (e) => {
@@ -150,37 +141,29 @@ browser.storage.sync.get(defaultOptions).then(options => {
         toggleDownloadImages(options);
     });
     
-    return browser.tabs.query({
+    return chrome.tabs.query({
         currentWindow: true,
         active: true
     });
 }).then((tabs) => {
     var id = tabs[0].id;
-    var url = tabs[0].url;
-    browser.tabs.executeScript(id, {
-        file: "/browser-polyfill.min.js"
-    })
-    .then(() => {
-        return browser.tabs.executeScript(id, {
-            file: "/contentScript/contentScript.js"
-        });
-    }).then( () => {
-        console.info("Successfully injected MarkDownload content script");
-        return clipSite(id);
-    }).catch( (error) => {
+    // Ask the service worker to clip this tab. The SW reads the page payload
+    // (injecting the content script if needed), converts via the offscreen
+    // document, and broadcasts "display.md" which notify() renders below.
+    return clipSite(id).catch((error) => {
         console.error(error);
         showError(error);
     });
 });
 
 // listen for notifications from the background page
-browser.runtime.onMessage.addListener(notify);
+chrome.runtime.onMessage.addListener(notify);
 
 //function to send the download message to the background page
 function sendDownloadMessage(text) {
     if (text != null) {
 
-        return browser.tabs.query({
+        return chrome.tabs.query({
             currentWindow: true,
             active: true
         }).then(tabs => {
@@ -192,7 +175,7 @@ function sendDownloadMessage(text) {
                 imageList: imageList,
                 mdClipsFolder: mdClipsFolder
             };
-            return browser.runtime.sendMessage(message);
+            return chrome.runtime.sendMessage(message);
         });
     }
 }

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>MarkDownload offscreen document</title>
+  </head>
+  <body>
+    <!--
+      Manifest V3 service workers have no DOM. All page-DOM-dependent work
+      (Readability parsing, Turndown conversion, image downloads) runs here in
+      this hidden offscreen document, which is a normal extension page.
+    -->
+    <script src="../shared/default-options.js"></script>
+    <script src="../shared/context-menus.js"></script>
+    <script src="../shared/filename.js"></script>
+    <script src="../background/moment.min.js"></script>
+    <script src="../background/turndown.js"></script>
+    <script src="../background/turndown-plugin-gfm.js"></script>
+    <script src="../background/Readability.js"></script>
+    <script src="../background/apache-mime-types.js"></script>
+    <script src="offscreen.js"></script>
+  </body>
+</html>
